@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 function App() {
   // --- 1. AUTHENTICATION STATE ---
-  // Mengambil token dari memori browser jika sebelumnya sudah login
   const [token, setToken] = useState(localStorage.getItem('jwt_token') || '');
   const [authForm, setAuthForm] = useState({ username: '', password: '' });
   const [authError, setAuthError] = useState('');
@@ -13,6 +13,10 @@ function App() {
   const [cart, setCart] = useState([]);
   const [transactionStatus, setTransactionStatus] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // --- AI STATE ---
+  const [aiInsight, setAiInsight] = useState('');
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
@@ -31,7 +35,6 @@ function App() {
       
       if (!response.ok) throw new Error(data.message || 'Login failed');
 
-      // Simpan kunci di state dan memori browser (localStorage)
       setToken(data.token);
       localStorage.setItem('jwt_token', data.token);
     } catch (error) {
@@ -59,7 +62,6 @@ function App() {
     }
   };
 
-  // Ambil data produk HANYA JIKA sudah punya token (sudah login)
   useEffect(() => {
     if (token) {
       fetchProducts();
@@ -93,17 +95,15 @@ function App() {
           customer_name: "Walk-in Customer"
         };
 
-        // KUNCI UTAMA: Menyisipkan Token JWT ke Satpam Backend!
         return fetch(`${API_URL}/checkout`, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}` // <--- INI DIA TIKET MASUKNYA
+            'Authorization': `Bearer ${token}` 
           },
           body: JSON.stringify(payload)
         }).then(async res => {
           if (!res.ok) {
-            // Jika token kadaluarsa, API akan menolak
             if (res.status === 401) throw new Error("Sesi habis. Silakan login ulang.");
             throw new Error(`Gagal memproses ${item.name}`);
           }
@@ -117,7 +117,6 @@ function App() {
       fetchProducts(); 
     } catch (error) {
       setTransactionStatus(`❌ Error: ${error.message}`);
-      // Auto-logout jika ditolak karena masalah keamanan (401)
       if (error.message.includes("Sesi habis")) handleLogout();
     } finally {
       setIsProcessing(false);
@@ -125,21 +124,54 @@ function App() {
     }
   };
 
-  // --- 6. UI: HALAMAN LOGIN (Jika belum punya token) ---
+  // --- LOGIC: GEMINI AI BUSINESS INSIGHT ---
+  const generateAIInsight = async () => {
+    if (products.length === 0) return;
+    setIsGeneratingAI(true);
+    setAiInsight('');
+
+    try {
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) throw new Error("API Key Gemini tidak ditemukan di .env");
+
+      const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+      const inventoryData = products.map(p => `${p.name} (Harga: Rp${p.price}, Stok: ${p.stock})`).join(', ');
+
+      const prompt = `
+        Anda adalah konsultan bisnis ritel kelas dunia. 
+        Analisis data inventaris toko ini: ${inventoryData}.
+        Berikan 2 kalimat singkat, padat, dan profesional (dalam bahasa Indonesia) 
+        berisi peringatan stok atau saran strategi penjualan. 
+        Jangan gunakan format markdown berlebihan, langsung to the point.
+      `;
+
+      const result = await model.generateContent(prompt);
+      setAiInsight(result.response.text());
+    } catch (error) {
+      console.error("AI Error:", error);
+      setAiInsight("❌ Gagal menghubungi konsultan AI. Periksa koneksi atau API Key.");
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
+  // --- 6. UI: HALAMAN LOGIN ---
   if (!token) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
         <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-extrabold text-indigo-600">Secure POS</h1>
-            <p className="text-slate-500 mt-2">Masuk menggunakan Kredensial Global</p>
+            <p className="text-slate-500 mt-2">Enterprise Access Portal</p>
           </div>
           
           {authError && <div className="bg-red-100 text-red-700 p-3 rounded-lg mb-4 text-sm font-semibold">{authError}</div>}
 
           <form onSubmit={handleLogin} className="space-y-5">
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-1">Username</label>
+              <label className="block text-sm font-bold text-slate-700 mb-1">System Username</label>
               <input 
                 type="text" 
                 className="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
@@ -149,7 +181,7 @@ function App() {
               />
             </div>
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-1">Password</label>
+              <label className="block text-sm font-bold text-slate-700 mb-1">Access Key</label>
               <input 
                 type="password" 
                 className="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
@@ -159,7 +191,7 @@ function App() {
               />
             </div>
             <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition">
-              Buka Brankas
+              Authenticate
             </button>
           </form>
         </div>
@@ -167,7 +199,7 @@ function App() {
     );
   }
 
-  // --- 7. UI: DASHBOARD KASIR (Jika token ada) ---
+  // --- 7. UI: DASHBOARD KASIR ---
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800">
       <header className="bg-indigo-600 text-white p-5 shadow-md">
@@ -180,7 +212,7 @@ function App() {
       </header>
 
       <main className="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-8 mt-4">
-        {/* PANEL KIRI: Produk */}
+        {/* PANEL KIRI: Produk & AI */}
         <div className="lg:col-span-2">
           <h2 className="text-xl font-bold mb-4 border-b pb-2">Katalog Global</h2>
           {isLoading ? (
@@ -203,6 +235,33 @@ function App() {
               ))}
             </div>
           )}
+
+          {/* PANEL AI: Business Insight (Sekarang aman di dalam return!) */}
+          <div className="mt-8 bg-linear-to-r from-indigo-900 to-purple-800 rounded-xl p-6 text-white shadow-lg">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                ✨ Gemini Business AI
+              </h3>
+              <button 
+                onClick={generateAIInsight}
+                disabled={isGeneratingAI || products.length === 0}
+                className={`px-4 py-2 rounded-lg text-sm font-bold transition shadow-md
+                  ${isGeneratingAI ? 'bg-purple-600 opacity-70 cursor-wait' : 'bg-white text-indigo-900 hover:bg-indigo-50 active:scale-95'}`}
+              >
+                {isGeneratingAI ? 'Menganalisis...' : 'Generate Insight'}
+              </button>
+            </div>
+            
+            <div className="bg-white/10 p-4 rounded-lg min-h-20 border border-white/20">
+              {aiInsight ? (
+                <p className="text-indigo-50 leading-relaxed text-sm">{aiInsight}</p>
+              ) : (
+                <p className="text-indigo-300/60 text-sm italic">
+                  Tekan tombol di atas untuk mendapatkan analisis pakar mengenai stok dan strategimu saat ini.
+                </p>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* PANEL KANAN: Keranjang */}
