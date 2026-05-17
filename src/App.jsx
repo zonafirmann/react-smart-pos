@@ -4,14 +4,18 @@ function App() {
   // 1. STATE MANAGEMENT
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [cart, setCart] = useState([]); // New State for Shopping Cart
+  const [cart, setCart] = useState([]); // Shopping Cart state
   const [transactionStatus, setTransactionStatus] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // ENVIRONMENT VARIABLE: Detect API URL dynamically (Local vs Production)
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
   // 2. FETCH PRODUCTS LOGIC
   const fetchProducts = async () => {
     try {
-      const response = await fetch('http://localhost:8080/products');
+      // Dynamic fetch using API_URL
+      const response = await fetch(`${API_URL}/products`);
       const data = await response.json();
       setProducts(data);
       setIsLoading(false);
@@ -21,18 +25,19 @@ function App() {
     }
   };
 
+  // Run once on component mount
   useEffect(() => {
     fetchProducts();
   }, []);
 
-  // 3. CART LOGIC (Add to Cart)
+  // 3. CART LOGIC (Add item to cart)
   const addToCart = (product) => {
     setCart((prevCart) => {
-      // Check if product is already in the cart
+      // Check if the product already exists in the cart
       const existingItem = prevCart.find(item => item.id === product.id);
       
       if (existingItem) {
-        // If existing, increase quantity (but don't exceed available stock)
+        // Prevent adding more than available stock
         if (existingItem.cartQuantity >= product.stock) return prevCart;
         return prevCart.map(item => 
           item.id === product.id 
@@ -41,23 +46,22 @@ function App() {
         );
       }
       
-      // If new, add to cart with quantity 1
+      // Add new product to cart with quantity 1
       return [...prevCart, { ...product, cartQuantity: 1 }];
     });
   };
 
-  // Calculate Total Price dynamically
+  // Calculate Total Price dynamically based on cart contents
   const cartTotal = cart.reduce((total, item) => total + (item.price * item.cartQuantity), 0);
 
-  // 4. CHECKOUT LOGIC (Process Payment for all items)
+  // 4. CHECKOUT LOGIC (Process Payment)
   const processPayment = async () => {
     if (cart.length === 0) return;
     setIsProcessing(true);
     setTransactionStatus(null);
 
     try {
-      // We use Promise.all to send multiple checkout requests concurrently
-      // since our Go API currently processes one product_id per request.
+      // Process multiple items concurrently using Promise.all
       const checkoutPromises = cart.map(item => {
         const payload = {
           product_id: item.id,
@@ -65,7 +69,8 @@ function App() {
           customer_name: "Walk-in Customer"
         };
 
-        return fetch('http://localhost:8080/checkout', {
+        // Dynamic fetch using API_URL
+        return fetch(`${API_URL}/checkout`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
@@ -75,17 +80,18 @@ function App() {
         });
       });
 
-      // Wait for all API requests to finish successfully
+      // Wait for all backend transactions to complete
       await Promise.all(checkoutPromises);
 
       setTransactionStatus("✅ Payment Successful! Database updated.");
-      setCart([]); // Clear cart
-      fetchProducts(); // Refresh stock from database
+      setCart([]); // Clear the shopping cart
+      fetchProducts(); // Refresh inventory from the database
 
     } catch (error) {
       setTransactionStatus(`❌ Error: ${error.message}`);
     } finally {
       setIsProcessing(false);
+      // Clear notification after 4 seconds
       setTimeout(() => setTransactionStatus(null), 4000);
     }
   };
@@ -103,7 +109,7 @@ function App() {
 
       <main className="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-8 mt-4">
         
-        {/* LEFT PANEL: Product Grid (Takes up 2/3 of space) */}
+        {/* LEFT PANEL: Product Grid (2/3 width) */}
         <div className="lg:col-span-2">
           <h2 className="text-xl font-bold mb-4 border-b pb-2">Available Products</h2>
           
@@ -134,11 +140,11 @@ function App() {
           )}
         </div>
 
-        {/* RIGHT PANEL: Shopping Cart (Takes up 1/3 of space) */}
+        {/* RIGHT PANEL: Shopping Cart (1/3 width) */}
         <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-6 h-fit sticky top-6">
           <h2 className="text-xl font-bold mb-4 border-b pb-2">Current Order</h2>
           
-          {/* Status Message */}
+          {/* Status Message Notification */}
           {transactionStatus && (
             <div className={`mb-4 p-3 rounded text-sm font-semibold
               ${transactionStatus.includes('✅') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
@@ -146,6 +152,7 @@ function App() {
             </div>
           )}
 
+          {/* Cart Items */}
           {cart.length === 0 ? (
             <div className="text-center py-10 text-slate-400">
               <p>Cart is empty.</p>
@@ -167,7 +174,7 @@ function App() {
             </div>
           )}
 
-          {/* Cart Total & Action */}
+          {/* Cart Total & Action Button */}
           <div className="border-t border-slate-200 pt-4">
             <div className="flex justify-between items-center mb-6">
               <span className="text-lg font-bold text-slate-500">Total</span>
