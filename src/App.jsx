@@ -1,4 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+
+// ENVIRONMENT VARIABLE: Detect API URL dynamically (Local vs Production)
+// Dipindahkan ke luar komponen agar tidak dibuat ulang pada setiap proses render
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 function App() {
   // 1. STATE MANAGEMENT
@@ -8,27 +12,27 @@ function App() {
   const [transactionStatus, setTransactionStatus] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // ENVIRONMENT VARIABLE: Detect API URL dynamically (Local vs Production)
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-
   // 2. FETCH PRODUCTS LOGIC
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       // Dynamic fetch using API_URL
       const response = await fetch(`${API_URL}/products`);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
-      setProducts(data);
-      setIsLoading(false);
+      // Mencegah error .map() dengan memastikan response yang dibaca adalah array
+      setProducts(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Failed to fetch products:", error);
+      setProducts([]); // Fallback jika gagal mengambil data
+    } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   // Run once on component mount
   useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [fetchProducts]);
 
   // 3. CART LOGIC (Add item to cart)
   const addToCart = (product) => {
@@ -85,6 +89,7 @@ function App() {
 
       setTransactionStatus("✅ Payment Successful! Database updated.");
       setCart([]); // Clear the shopping cart
+      setIsLoading(true); // Trigger loading state before refreshing products
       fetchProducts(); // Refresh inventory from the database
 
     } catch (error) {
@@ -160,8 +165,8 @@ function App() {
             </div>
           ) : (
             <div className="space-y-4 mb-6 max-h-64 overflow-y-auto pr-2">
-              {cart.map((item, index) => (
-                <div key={index} className="flex justify-between items-center border-b border-slate-50 pb-2">
+              {cart.map((item) => (
+                <div key={item.id} className="flex justify-between items-center border-b border-slate-50 pb-2">
                   <div>
                     <p className="font-semibold text-sm">{item.name}</p>
                     <p className="text-xs text-slate-500">Rp {item.price.toLocaleString('id-ID')} x {item.cartQuantity}</p>
