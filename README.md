@@ -1,26 +1,23 @@
-# 🛒 Enterprise Smart POS (Point of Sale)
+# 🛒 Enterprise Smart POS Dashboard (AI-Ready)
 
 ![React](https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB)
 ![Vite](https://img.shields.io/badge/vite-%23646CFF.svg?style=for-the-badge&logo=vite&logoColor=white)
 ![TailwindCSS](https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)
+![Google Gemini](https://img.shields.io/badge/Google%20Gemini-8E75C2?style=for-the-badge&logo=googlegemini&logoColor=white)
 
-A highly responsive, state-driven Point of Sale (POS) frontend application. Engineered to seamlessly process real-time transactions, manage complex cart states, and interface with containerized Go microservices.
+An enterprise-grade, state-driven Point of Sale (POS) frontend application. Engineered with modern stateless security architectures, concurrent transaction handling, and integrated predictive analytics engines.
 
-## ✨ Key Architectural Features
+## 🚀 Architectural Breakthroughs (What I Built)
 
-* **Advanced State Management:** Implements dynamic shopping cart logic (add, increment, calculate totals) entirely in React state without mutating raw data.
-* **Concurrent API Processing:** Utilizes `Promise.all` to process multiple cart items simultaneously to the backend, ensuring ACID compliance on checkout.
-* **Modern UI/UX Engine:** Powered by the blazing-fast **Tailwind CSS v4** Oxide engine for an enterprise-grade, responsive aesthetic.
-* **Environment Configuration:** Built-in `.env` routing to seamlessly switch between local Go binaries (`localhost`) and production server endpoints.
-* **Military-Grade Security:** Implements JSON Web Tokens (JWT) for stateless authentication and bcrypt for irreversible password hashing, protecting sensitive checkout endpoints.
-* **Protected Routing:** React state architecture designed to intercept unauthorized access, enforce session validity, and seamlessly manage global authentication headers.
+* **Stateless Security Gateway:** Integrated secure JWT login flow with automated token injection via HTTP Authorization headers for protected backend transactions.
+* **Session Persistence:** Implemented proactive session monitoring leveraging browser storage layers to handle automatic termination on credential expiry.
+* **Concurrent Checkout Processing:** Developed high-throughput cart processing utilizing asynchronous JavaScript synchronization primitives (`Promise.all`) to process checkout loads concurrently.
+* **Predictive AI Analytics Blueprint:** Embedded a contextual interface using the `@google/generative-ai` SDK, mapping live PostgreSQL database state arrays into large language model context windows for business reporting.
 
-## 🚦 Local Development Setup
+## ⚙️ Environment Configuration
 
-Ensure your Go Cloud Inventory API (Backend) is running on `localhost:8080`.
+To run this application locally, ensure you create a `.env` file in the root directory:
 
-1. **Clone the repository**
-   ```bash
-   git clone [https://github.com/zonafirmann/react-smart-pos.git](https://github.com/zonafirmann/react-smart-pos.git)
-   cd react-smart-pos
+```env
+VITE_API_URL=http://localhost:8080
+VITE_GEMINI_API_KEY=your_secured_google_ai_studio_key
