@@ -13,6 +13,8 @@ A highly responsive, state-driven Point of Sale (POS) frontend application. Engi
 * **Concurrent API Processing:** Utilizes `Promise.all` to process multiple cart items simultaneously to the backend, ensuring ACID compliance on checkout.
 * **Modern UI/UX Engine:** Powered by the blazing-fast **Tailwind CSS v4** Oxide engine for an enterprise-grade, responsive aesthetic.
 * **Environment Configuration:** Built-in `.env` routing to seamlessly switch between local Go binaries (`localhost`) and production server endpoints.
+* **Military-Grade Security:** Implements JSON Web Tokens (JWT) for stateless authentication and bcrypt for irreversible password hashing, protecting sensitive checkout endpoints.
+* **Protected Routing:** React state architecture designed to intercept unauthorized access, enforce session validity, and seamlessly manage global authentication headers.
 
 ## 🚦 Local Development Setup
 
